@@ -40,7 +40,7 @@ margin-bottom: 0.2rem;
 </style>
 """,
 unsafe_allow_html=True,
-```
+
 
 )
 
