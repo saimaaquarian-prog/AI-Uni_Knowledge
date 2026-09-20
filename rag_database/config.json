@@ -1,0 +1,15 @@
+{
+  "database_name": "University Academic Knowledge Assistant",
+  "version": "1.0",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_dimension": 384,
+  "faiss_index": "academic_knowledge.faiss",
+  "metadata_file": "metadata.json",
+  "similarity_metric": "cosine",
+  "faiss_metric": "inner_product",
+  "rows_per_chunk": 8,
+  "row_overlap": 2,
+  "total_vectors": 73,
+  "created_at": "2026-09-20T17:45:27.534724+00:00",
+  "source": "https://drive.google.com/drive/folders/1-3niStlwtNfaywiaUBADg4KCKkq_fe2g?usp=drive_link"
+}
