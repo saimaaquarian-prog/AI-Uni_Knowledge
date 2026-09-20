@@ -7,29 +7,14 @@ import streamlit as st
 from groq import Groq
 from sentence_transformers import SentenceTransformer
 
-# ============================================================
-
-# APPLICATION CONFIGURATION
-
-# ============================================================
-
 APP_TITLE = "University Academic Knowledge Assistant"
-
 MODEL_NAME = "openai/gpt-oss-120b"
-
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 DATABASE_DIR = Path("rag_database")
-
 FAISS_FILE = DATABASE_DIR / "academic_knowledge.faiss"
 METADATA_FILE = DATABASE_DIR / "metadata.json"
 CONFIG_FILE = DATABASE_DIR / "config.json"
-
-# ============================================================
-
-# PAGE CONFIGURATION
-
-# ============================================================
 
 st.set_page_config(
 page_title=APP_TITLE,
@@ -37,12 +22,6 @@ page_icon="🎓",
 layout="wide",
 initial_sidebar_state="expanded",
 )
-
-# ============================================================
-
-# CUSTOM CSS
-
-# ============================================================
 
 st.markdown(
 """ <style>
@@ -58,25 +37,12 @@ margin-bottom: 0.2rem;
     opacity: 0.75;
     margin-bottom: 1.5rem;
 }
-
-.source-card {
-    padding: 0.8rem;
-    border-radius: 0.6rem;
-    border: 1px solid rgba(128,128,128,0.25);
-    margin-bottom: 0.5rem;
-}
 </style>
 """,
 unsafe_allow_html=True,
-
+```
 
 )
-
-# ============================================================
-
-# HEADER
-
-# ============================================================
 
 st.markdown(
 f'<div class="main-title">🎓 {APP_TITLE}</div>',
@@ -93,7 +59,7 @@ unsafe_allow_html=True,
 
 # ============================================================
 
-# VALIDATE DATABASE
+# CHECK DATABASE FILES
 
 # ============================================================
 
@@ -109,14 +75,14 @@ if missing_files:
 st.error("RAG database files are missing.")
 
 ```
-st.write("The following files could not be found:")
+st.write("Missing files:")
 
 for file in missing_files:
     st.code(file)
 
 st.info(
-    "Upload the precomputed database files inside "
-    "the rag_database folder."
+    "Make sure the rag_database folder is uploaded "
+    "to the GitHub repository."
 )
 
 st.stop()
@@ -124,7 +90,7 @@ st.stop()
 
 # ============================================================
 
-# LOAD DATABASE
+# LOAD FAISS
 
 # ============================================================
 
@@ -132,18 +98,39 @@ st.stop()
 def load_faiss_index():
 return faiss.read_index(str(FAISS_FILE))
 
+# ============================================================
+
+# LOAD METADATA
+
+# ============================================================
+
 @st.cache_data(show_spinner=False)
 def load_metadata():
-with open(METADATA_FILE, "r", encoding="utf-8") as file:
+with open(
+METADATA_FILE,
+"r",
+encoding="utf-8",
+) as file:
 return json.load(file)
+
+# ============================================================
+
+# LOAD CONFIG
+
+# ============================================================
 
 @st.cache_data(show_spinner=False)
 def load_config():
-if not CONFIG_FILE.exists():
-return {}
 
 ```
-with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+if not CONFIG_FILE.exists():
+    return {}
+
+with open(
+    CONFIG_FILE,
+    "r",
+    encoding="utf-8",
+) as file:
     return json.load(file)
 ```
 
@@ -155,7 +142,15 @@ with open(CONFIG_FILE, "r", encoding="utf-8") as file:
 
 @st.cache_resource(show_spinner="Loading embedding model...")
 def load_embedding_model():
-return SentenceTransformer(EMBEDDING_MODEL_NAME)
+return SentenceTransformer(
+EMBEDDING_MODEL_NAME
+)
+
+# ============================================================
+
+# LOAD DATABASE
+
+# ============================================================
 
 try:
 index = load_faiss_index()
@@ -164,13 +159,16 @@ database_config = load_config()
 embedding_model = load_embedding_model()
 
 except Exception as error:
+
+```
 st.error("Failed to load the RAG database.")
 st.exception(error)
 st.stop()
+```
 
 # ============================================================
 
-# PREPARE METADATA RECORDS
+# READ RECORDS
 
 # ============================================================
 
@@ -178,27 +176,30 @@ records = database.get("records", [])
 
 if not records:
 st.error(
-"metadata.json does not contain any RAG records."
+"metadata.json does not contain any records."
 )
 st.stop()
 
 # ============================================================
 
-# CHECK FAISS / METADATA ALIGNMENT
+# CHECK VECTOR / METADATA COUNT
 
 # ============================================================
 
 if index.ntotal != len(records):
+
+```
 st.warning(
-f"FAISS contains {index.ntotal} vectors, but "
-f"metadata.json contains {len(records)} records. "
-"Make sure the FAISS index and metadata were created "
-"together."
+    f"FAISS contains {index.ntotal} vectors, "
+    f"but metadata.json contains {len(records)} records. "
+    "The FAISS index and metadata should be generated "
+    "together."
 )
+```
 
 # ============================================================
 
-# GROQ CLIENT
+# GROQ API
 
 # ============================================================
 
@@ -209,17 +210,20 @@ except Exception:
 groq_api_key = None
 
 if not groq_api_key:
-st.warning("GROQ_API_KEY is not configured.")
 
 ```
+st.error("GROQ_API_KEY is not configured.")
+
 st.info(
-    "Add GROQ_API_KEY to your Streamlit Cloud Secrets."
+    "Add GROQ_API_KEY to Streamlit Cloud Secrets."
 )
 
 st.stop()
 ```
 
-client = Groq(api_key=groq_api_key)
+client = Groq(
+api_key=groq_api_key
+)
 
 # ============================================================
 
@@ -243,7 +247,10 @@ st.header("⚙️ RAG Settings")
 
 st.markdown("### Retrieval")
 
-max_sources = min(10, index.ntotal)
+max_sources = min(
+    10,
+    index.ntotal,
+)
 
 top_k = st.slider(
     "Number of sources",
@@ -251,7 +258,7 @@ top_k = st.slider(
     max_value=max_sources,
     value=min(5, max_sources),
     step=1,
-    help="Number of document chunks retrieved from FAISS.",
+    help="Number of chunks retrieved from FAISS.",
 )
 
 similarity_threshold = st.slider(
@@ -260,10 +267,7 @@ similarity_threshold = st.slider(
     max_value=1.0,
     value=0.20,
     step=0.05,
-    help=(
-        "Retrieved chunks below this cosine similarity "
-        "threshold are ignored."
-    ),
+    help="Minimum cosine similarity required.",
 )
 
 st.markdown("### Answer Settings")
@@ -296,10 +300,6 @@ reasoning_effort = st.select_slider(
         "high",
     ],
     value="medium",
-    help=(
-        "GPT-OSS 120B supports low, medium, "
-        "and high reasoning effort."
-    ),
 )
 
 show_scores = st.checkbox(
@@ -311,8 +311,13 @@ st.divider()
 
 st.markdown("### Database")
 
-st.caption(f"Vectors: {index.ntotal:,}")
-st.caption(f"Embedding dimension: {index.d}")
+st.caption(
+    f"Vectors: {index.ntotal:,}"
+)
+
+st.caption(
+    f"Embedding dimension: {index.d}"
+)
 
 st.caption(
     f"Embedding model: {EMBEDDING_MODEL_NAME}"
@@ -350,13 +355,14 @@ if st.button(
     "🗑️ Clear conversation",
     use_container_width=True,
 ):
+
     st.session_state.messages = []
     st.rerun()
 ```
 
 # ============================================================
 
-# RETRIEVAL FUNCTION
+# RETRIEVAL
 
 # ============================================================
 
@@ -365,23 +371,10 @@ query,
 number_of_results,
 threshold,
 ):
-"""
-Retrieve relevant documents using cosine similarity.
 
 ```
-FAISS uses IndexFlatIP.
-
-Because both document and query embeddings are L2-normalized:
-
-    Inner Product = Cosine Similarity
-"""
-
 if not query.strip():
     return []
-
-# --------------------------------------------------------
-# Create normalized query embedding
-# --------------------------------------------------------
 
 query_embedding = embedding_model.encode(
     [query],
@@ -395,16 +388,12 @@ query_embedding = np.asarray(
     dtype=np.float32,
 )
 
-# --------------------------------------------------------
-# Ensure correct shape
-# --------------------------------------------------------
-
 if query_embedding.ndim == 1:
-    query_embedding = query_embedding.reshape(1, -1)
 
-# --------------------------------------------------------
-# Search FAISS
-# --------------------------------------------------------
+    query_embedding = query_embedding.reshape(
+        1,
+        -1,
+    )
 
 scores, indices = index.search(
     query_embedding,
@@ -413,10 +402,6 @@ scores, indices = index.search(
 
 retrieved = []
 
-# --------------------------------------------------------
-# Process search results
-# --------------------------------------------------------
-
 for score, vector_id in zip(
     scores[0],
     indices[0],
@@ -424,33 +409,30 @@ for score, vector_id in zip(
 
     vector_id = int(vector_id)
 
-    # FAISS uses -1 when there is no result
     if vector_id < 0:
         continue
 
-    # Prevent invalid metadata access
     if vector_id >= len(records):
         continue
 
-    # Convert FAISS score to float
     score = float(score)
 
-    # Numerical safety
-    score = max(-1.0, min(1.0, score))
+    score = max(
+        -1.0,
+        min(1.0, score),
+    )
 
-    # Apply similarity threshold
     if score < threshold:
         continue
 
     record = records[vector_id]
 
-    metadata = record.get(
-        "metadata",
-        {},
+    metadata = dict(
+        record.get(
+            "metadata",
+            {},
+        )
     )
-
-    # Add vector ID to displayed metadata
-    metadata = dict(metadata)
 
     metadata["vector_id"] = vector_id
 
@@ -471,11 +453,13 @@ return retrieved
 
 # ============================================================
 
-# CONTEXT BUILDER
+# BUILD CONTEXT
 
 # ============================================================
 
-def build_context(retrieved_documents):
+def build_context(
+retrieved_documents,
+):
 
 ```
 context_parts = []
@@ -489,17 +473,13 @@ for number, document in enumerate(
 
     source = (
         f"Source {number}\n"
-        f"File: "
-        f"{metadata.get('file_name', 'Unknown')}\n"
-        f"Sheet: "
-        f"{metadata.get('sheet_name', 'Unknown')}\n"
+        f"File: {metadata.get('file_name', 'Unknown')}\n"
+        f"Sheet: {metadata.get('sheet_name', 'Unknown')}\n"
         f"Excel rows: "
         f"{metadata.get('row_start', '?')}-"
         f"{metadata.get('row_end', '?')}\n"
-        f"Chunk: "
-        f"{metadata.get('chunk_number', '?')}\n"
-        f"Vector ID: "
-        f"{metadata.get('vector_id', '?')}\n"
+        f"Chunk: {metadata.get('chunk_number', '?')}\n"
+        f"Vector ID: {metadata.get('vector_id', '?')}\n"
         f"Cosine similarity: "
         f"{document['score']:.4f}\n\n"
         f"Content:\n"
@@ -525,54 +505,47 @@ return f"""
 
 You are a university academic knowledge assistant.
 
-Your task is to answer the student's question using
-ONLY the retrieved university knowledge supplied
-in the context.
+Answer student questions using ONLY the retrieved
+university knowledge provided to you.
 
-You are powered by:
+LLM:
 {MODEL_NAME}
 
-Technicality level:
+Technicality:
 {technicality}
 
-Requested response length:
+Response length:
 {response_length}
 
-IMPORTANT RAG RULES:
+Rules:
 
-1. Use the retrieved context as the primary source
-   of truth.
+1. Use retrieved university information as the primary
+   source of truth.
 
 2. Do not invent university policies, requirements,
-   dates, procedures, rules, programs, fees, or
+   dates, fees, procedures, programs, rules, or
    academic information.
 
-3. If the answer is not supported by the retrieved
-   context, clearly say that the available university
-   knowledge base does not contain enough information.
+3. If the retrieved information does not contain the
+   answer, clearly say that the knowledge base does not
+   contain enough information.
 
-4. You may explain or synthesize information from
-   multiple retrieved sources.
+4. You may combine information from multiple retrieved
+   sources.
 
-5. Do not claim that a source says something when it
-   does not.
+5. Preserve important qualifications and exceptions.
 
-6. Preserve important qualifications and exceptions.
+6. If sources contain conflicting information, explain
+   the difference.
 
-7. If multiple sources contain different information,
-   clearly identify the difference instead of silently
-   choosing one.
+7. Keep responses appropriate for university students.
 
-8. Keep the answer appropriate for university students.
+8. Use headings, bullets, or numbered steps when useful.
 
-9. When useful, organize the answer using headings,
-   bullets, numbered steps, or tables.
+9. Provide a concise Sources section when appropriate.
 
-10. At the end, provide a concise "Sources" section.
-    The application separately displays detailed
-    source metadata.
+10. Do not reveal hidden reasoning or chain-of-thought.
 
-Do not reveal hidden reasoning or internal chain-of-thought.
 Provide only the useful answer and concise explanations.
 """
 
@@ -593,7 +566,7 @@ system_prompt = create_system_prompt()
 user_prompt = f"""
 ```
 
-Answer the following student question using the
+Answer the following student question using only the
 retrieved university context.
 
 STUDENT QUESTION:
@@ -605,17 +578,16 @@ STUDENT QUESTION:
 
 ---
 
-If the context does not support the answer,
-say so clearly.
+If the context does not support the answer, clearly
+state that the available knowledge base does not contain
+enough information.
 
-Do not use information that is unrelated to
-the retrieved university documents.
+Do not use unrelated information.
 """
 
 ```
 response = client.chat.completions.create(
     model=MODEL_NAME,
-
     messages=[
         {
             "role": "system",
@@ -626,11 +598,8 @@ response = client.chat.completions.create(
             "content": user_prompt,
         },
     ],
-
     reasoning_effort=reasoning_effort,
-
     temperature=0.2,
-
     max_completion_tokens=2500,
 )
 
@@ -686,12 +655,9 @@ for source_number, source in enumerate(
         "?",
     )
 
-    title = (
-        f"Source {source_number} — "
-        f"{file_name}"
-    )
-
-    with st.expander(title):
+    with st.expander(
+        f"Source {source_number} — {file_name}"
+    ):
 
         col1, col2 = st.columns(2)
 
@@ -742,7 +708,7 @@ for source_number, source in enumerate(
 
 # ============================================================
 
-# DISPLAY CHAT HISTORY
+# CHAT HISTORY
 
 # ============================================================
 
@@ -770,7 +736,7 @@ with st.chat_message(
 
 # ============================================================
 
-# CHAT INPUT
+# USER QUESTION
 
 # ============================================================
 
@@ -786,10 +752,6 @@ question = question.strip()
 if not question:
     st.stop()
 
-# --------------------------------------------------------
-# DISPLAY USER QUESTION
-# --------------------------------------------------------
-
 st.session_state.messages.append(
     {
         "role": "user",
@@ -799,10 +761,6 @@ st.session_state.messages.append(
 
 with st.chat_message("user"):
     st.markdown(question)
-
-# --------------------------------------------------------
-# RETRIEVE SOURCES
-# --------------------------------------------------------
 
 with st.chat_message("assistant"):
 
@@ -815,10 +773,6 @@ with st.chat_message("assistant"):
             top_k,
             similarity_threshold,
         )
-
-    # ----------------------------------------------------
-    # NO RELEVANT DOCUMENTS
-    # ----------------------------------------------------
 
     if not retrieved_documents:
 
@@ -837,10 +791,6 @@ with st.chat_message("assistant"):
                 "sources": [],
             }
         )
-
-    # ----------------------------------------------------
-    # GENERATE ANSWER
-    # ----------------------------------------------------
 
     else:
 
@@ -866,23 +816,14 @@ with st.chat_message("assistant"):
                 )
 
                 st.exception(error)
-
                 st.stop()
 
         st.markdown(answer)
-
-        # ------------------------------------------------
-        # DISPLAY SOURCE TRACEABILITY
-        # ------------------------------------------------
 
         display_sources(
             retrieved_documents,
             show_scores,
         )
-
-        # ------------------------------------------------
-        # SAVE ASSISTANT MESSAGE
-        # ------------------------------------------------
 
         st.session_state.messages.append(
             {
